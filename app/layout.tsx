@@ -1,10 +1,11 @@
 import "@mantine/core/styles.css";
 import React from "react";
-import { MantineProvider, ColorSchemeScript, ActionIcon, Container, Affix } from "@mantine/core";
+import { MantineProvider, ColorSchemeScript, ActionIcon, Affix } from "@mantine/core";
 import { theme } from "../theme";
 import '@mantine/dates/styles.css';
 import { IconBrandGithub } from "@tabler/icons-react";
 import Link from "next/link";
+import { Analytics } from '@vercel/analytics/next';
 
 export const metadata = {
     title: "Postmark Exporter",
@@ -31,6 +32,7 @@ export default function RootLayout({ children }: { children: any }) {
                             </ActionIcon>
                         </Link>
                     </Affix>
+                    <Analytics />
                 </MantineProvider>
             </body>
         </html>
