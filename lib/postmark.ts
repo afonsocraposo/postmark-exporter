@@ -9,7 +9,7 @@ function getPostmarkClient(token: string): ServerClient {
 }
 
 const BATCH_SIZE = 500;
-const MAX_MESSAGES = 2000;
+const MAX_MESSAGES = 10000;
 
 export async function getMessagesTotalCount(token: string, stream: string, tag: string, start: Date, end: Date): Promise<number> {
     const client = getPostmarkClient(token);
