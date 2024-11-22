@@ -1,13 +1,13 @@
 "use client";
 
-import { ActionIcon, Box, Button, Center, Container, Group, Loader, Progress, Radio, RadioGroup, Stack, Text, TextInput } from "@mantine/core";
+import { ActionIcon, Alert, Box, Button, Center, Container, Group, Loader, Progress, Radio, RadioGroup, Stack, Text, TextInput } from "@mantine/core";
 import { DatePickerInput, DatesRangeValue } from '@mantine/dates';
 
 import { useForm } from "@mantine/form";
 import { useState } from "react";
-import { humanReadableTimeDiff } from "../../lib/time";
+import { areDaysEqual, humanReadableTimeDiff } from "../../lib/time";
 import { getBouncesTotalCount, getMessagesTotalCount } from "../../lib/postmark";
-import { IconRefresh } from '@tabler/icons-react';
+import { IconAlertTriangle, IconRefresh } from '@tabler/icons-react';
 
 
 export default function Form() {
@@ -17,11 +17,9 @@ export default function Form() {
     const [loading, setLoading] = useState(false);  // Track loading state
     const [totalCount, setTotalCount] = useState<number | null>(null);
     const [currentCount, setCurrentCount] = useState<number | null>(null);
+    const [alertText, setAlertText] = useState<string | null>(null);
 
 
-    const isToday = (date: Date) => {
-        return date.getFullYear() == today.getFullYear() && date.getMonth() == today.getMonth() && date.getDate() == today.getDate();
-    }
     const form = useForm({
         initialValues: {
             serverToken: '',
@@ -37,7 +35,10 @@ export default function Form() {
         },
     });
     const onSubmit = (values: { serverToken: string, tag: string, stream: string, type: string }) => {
-        return totalCount ? download(values) : search(values);
+        if (!dateRange[0] || !dateRange[1]) {
+            return
+        }
+        return totalCount ? downloadAll(values) : search(values);
     }
     const search = async (values: { serverToken: string, tag: string, stream: string, type: string }) => {
         setLoading(true);  // Set loading to true before starting the fetch
@@ -58,80 +59,126 @@ export default function Form() {
             }
             setTotalCount(totalCount);
         } catch (error) {
-            alert("An error occurred while fetching.");
+            setAlertText(`${error}`);
         } finally {
             setLoading(false);  // Set loading to false after fetch completes
         }
     }
-    const download = async (values: { serverToken: string; tag: string; stream: string; type: string }) => {
+    const downloadAll = async (values: { serverToken: string, tag: string, stream: string, type: string }) => {
+        const { type } = values;
+
         setLoading(true); // Set loading to true before starting the fetch
         setCurrentCount(0);
 
-        const { serverToken, tag, stream, type } = values;
+        const isoString = new Date().toISOString().slice(0, 19).replace(/:/g, '-'); // e.g., "2024-11-22T10-30-00"
+        const filename = `postmark-export-${type}-${isoString}.csv`;
 
-        const start = dateRange[0]?.toISOString()?.slice(0, 10) || '';
-        const end = dateRange[1]?.toISOString()?.slice(0, 10) || '';
+        const startDate = dateRange[0];
+        const endDate = dateRange[1];
+
+        startDate.setHours(0, 0, 0, 0);
+        endDate.setHours(23, 59, 59, 999);
+
+        const start = startDate.toISOString()?.slice(0, 19) || '';
+        let end = endDate.toISOString()?.slice(0, 19) || '';
+
+        try {
+            let csvContent = '';
+            let header = true;
+            let currentCount = 0;
+            while (true) {
+                const { csvContent: csvContentBatch, hasMore, currentCount: newCurrentCount } = await download(values, start, end, header, currentCount);
+                currentCount = newCurrentCount;
+                csvContent += csvContentBatch;
+
+                if (!hasMore) {
+                    break;
+                }
+
+                const lastEntry = csvContentBatch.split('\n').slice(-2)[0];
+                // match date of format "2024-11-22T18:28:29Z"
+                const lastDateMatch = lastEntry?.match(/\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/)?.[0];
+                if (!lastDateMatch) {
+                    break;
+                }
+                // subtract 1 millisecond to avoid fetching the same entry again
+                const newEnd = new Date(Date.parse(lastDateMatch) - 1);
+                end = newEnd.toISOString().slice(0, 19);
+                header = false;
+            }
+
+
+            downloadCsvContent(csvContent, filename);
+
+            setCurrentCount(null)
+        } catch (error) {
+            setAlertText(`${error}`);
+        } finally {
+            setLoading(false); // Set loading to false after fetch completes
+        }
+    }
+    const download = async (values: { serverToken: string; tag: string; stream: string; type: string }, start: string, end: string, header: boolean, currentCount: number) => {
+
+        const prevCounter = currentCount;
+        const { serverToken, tag, stream, type } = values;
 
         const queryParams = new URLSearchParams();
         queryParams.set('start', start);
         queryParams.set('end', end);
         queryParams.set('tag', tag);
         queryParams.set('stream', stream);
+        queryParams.set('header', header ? 'true' : 'false');
         const url = `/api/download-${type}?${queryParams.toString()}`;
 
-        try {
-            // Use fetch to trigger the API route
-            const response = await fetch(url, {
-                headers: {
-                    'X-Postmark-Server-Token': serverToken,
-                },
-            });
+        // Use fetch to trigger the API route
+        const response = await fetch(url, {
+            headers: {
+                'X-Postmark-Server-Token': serverToken,
+            },
+        });
 
-            if (response.ok) {
-                const isoString = new Date().toISOString().slice(0, 19).replace(/:/g, '-'); // e.g., "2024-11-22T10-30-00"
-                const filename = `${type}-${isoString}.csv`;
+        if (response.ok) {
 
-                const reader = response.body?.getReader();
-                const decoder = new TextDecoder();
-                let csvContent = '';
-
-                if (reader) {
-                    // Read the stream incrementally
-                    let counter = 0;
-                    while (true) {
-                        const { done, value } = await reader.read();
-                        if (done) break;
-                        const content = decoder.decode(value, { stream: true });
-                        csvContent += content;
-                        // count number of \n on content
-                        const newLines = content.match(/\n/g)?.length ?? 0;
-                        counter += newLines;
-                        setCurrentCount(counter);
-                    }
-
-                    // Trigger the download once the full CSV is collected
-                    const blob = new Blob([csvContent], { type: 'text/csv' });
-                    const downloadUrl = window.URL.createObjectURL(blob);
-                    const link = document.createElement('a');
-                    link.href = downloadUrl;
-                    link.download = filename;
-                    document.body.appendChild(link);
-                    link.click();
-                    document.body.removeChild(link);
-                    setCurrentCount(null)
-                } else {
-                    alert('Stream error: Unable to process the response body.');
+            const reader = response.body?.getReader();
+            const decoder = new TextDecoder();
+            let csvContent = '';
+            if (reader) {
+                // Read the stream incrementally
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+                    const content = decoder.decode(value, { stream: true });
+                    csvContent += content;
+                    // count number of \n on content
+                    const newLines = content.match(/\n/g)?.length ?? 0;
+                    currentCount += newLines;
+                    setCurrentCount(currentCount);
                 }
+
             } else {
-                alert('Failed to download messages.');
+                throw new Error('Stream error: Unable to process the response body.');
             }
-        } catch (error) {
-            console.error('Fetch error:', error);
-            alert('An error occurred while fetching.');
-        } finally {
-            setLoading(false); // Set loading to false after fetch completes
+
+            const totalCount = parseInt(response.headers.get('Content-Length') ?? '0');
+            if (prevCounter == 0) {
+                setCurrentCount(totalCount);
+            }
+            return { csvContent, hasMore: (currentCount - prevCounter) < totalCount, currentCount };
+        } else {
+            throw new Error('Failed to download messages.');
         }
     };
+    const downloadCsvContent = async (csvContent: string, filename: string) => {
+        // Trigger the download once the full CSV is collected
+        const blob = new Blob([csvContent], { type: 'text/csv' });
+        const downloadUrl = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = downloadUrl;
+        link.download = filename;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    }
 
 
     return (
@@ -176,10 +223,10 @@ export default function Form() {
                                 setDateRange([start, end]);
                             }}
                         />
-                        {dateRange[0] && dateRange[1] && isToday(dateRange[1]) &&
+                        {dateRange[0] && dateRange[1] && areDaysEqual(today, dateRange[1]) &&
                             <Text size="sm" c='dimmed'>
                                 {
-                                    "Last " + humanReadableTimeDiff(dateRange[0], dateRange[1])
+                                    humanReadableTimeDiff(dateRange[0], dateRange[1])
                                 }
                             </Text>
                         }
@@ -203,8 +250,8 @@ export default function Form() {
                                 <Text size='sm'>
                                     {totalCount ? `Total: ${totalCount} ${form.values.type}` : ''}
                                 </Text>
-                                {loading && totalCount && currentCount!== null && (
-                                    <Progress size="xl" value={Math.min(100, 100 * currentCount / totalCount)} animated striped/>
+                                {loading && totalCount && currentCount !== null && (
+                                    <Progress size="xl" value={Math.min(100, 100 * currentCount / totalCount)} animated striped />
                                 )}
                             </Stack>
                         </Container>
@@ -222,7 +269,11 @@ export default function Form() {
                             )}
                         </Box>
                     </Group>
-
+                    {alertText &&
+                        <Alert variant="light" color="red" title="Alert title" icon={<IconAlertTriangle />}>
+                            {alertText}
+                        </Alert>
+                    }
                 </Stack>
             </form>
         </>

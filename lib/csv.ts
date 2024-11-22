@@ -20,7 +20,7 @@ export function convertToCSV(messages: any[], includeHeaders: boolean = true): s
         }).join(',');
     });
 
-    if (!includeHeaders) return rows.join('\n');
+    if (!includeHeaders) return rows.join('\n') + '\n';
 
     // Define CSV headers based on keys in the first message
     const headers = Object.keys(messages[0]).join(',');
