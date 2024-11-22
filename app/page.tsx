@@ -1,3 +1,13 @@
+import { Center, Stack, Title } from "@mantine/core";
+import Form from "./[form]/form";
+
 export default function HomePage() {
-  return <div>Home page</div>;
+    return <Center>
+        <Stack>
+            <Title>
+                Postmark Exporter
+            </Title>
+            <Form />
+        </Stack>
+    </Center>;
 }
