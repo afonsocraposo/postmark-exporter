@@ -161,7 +161,7 @@ export default function Form() {
                 throw new Error('Stream error: Unable to process the response body.');
             }
 
-            const totalCount = parseInt(response.headers.get('Content-Length') ?? '0');
+            const totalCount = parseInt(response.headers.get('X-Content-Length') ?? '0');
             if (prevCounter == 0) {
                 setCurrentCount(totalCount);
             }

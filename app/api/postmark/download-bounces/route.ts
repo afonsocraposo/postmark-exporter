@@ -72,7 +72,7 @@ export async function GET(request: Request): Promise<NextResponse> {
         headers: {
             'Content-Type': 'text/csv',
             'Content-Disposition': `attachment; filename="bounces-${Date.now()}.csv"`,
-            'Content-Length': total.toString(),
+            'X-Content-Length': total.toString(),
             'Transfer-Encoding': 'chunked',
         },
     });
