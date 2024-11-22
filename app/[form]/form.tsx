@@ -29,6 +29,7 @@ export default function Form() {
         },
         onValuesChange: (values) => {
             setTotalCount(null);
+        setAlertText(null);
         },
         validate: {
             serverToken: (value: string) => (/^[0-9a-fA-F]{8}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{12}$/.test(value) ? null : 'Invalid server token'),
@@ -38,6 +39,7 @@ export default function Form() {
         if (!dateRange[0] || !dateRange[1]) {
             return
         }
+        setAlertText(null);
         return totalCount ? downloadAll(values) : search(values);
     }
     const search = async (values: { serverToken: string, tag: string, stream: string, type: string }) => {
