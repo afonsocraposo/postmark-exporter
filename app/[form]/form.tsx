@@ -143,7 +143,9 @@ export default function Form() {
                             required
                             onChange={(dateRange: DatesRangeValue) => {
                                 setTotalCount(null);
-                                setDateRange(dateRange);
+                                const start = dateRange[0] as Date;
+                                const end = dateRange[1] as Date;
+                                setDateRange([start, end]);
                             }}
                         />
                         {dateRange[0] && dateRange[1] && isToday(dateRange[1]) &&
@@ -184,14 +186,14 @@ export default function Form() {
                             totalCount ? 'Download' : 'Search'
                         }</Button>
                         <Box w='md'>
-                        {totalCount && !loading && (
-                            <ActionIcon variant="subtle" onClick={()=>search(form.values)}>
-                                <IconRefresh style={{ width: '70%', height: '70%' }} stroke={1.5} />
-                            </ActionIcon>
-                        )}
-                        {loading && (
-                            <Loader size='sm'/>
-                        )}
+                            {totalCount && !loading && (
+                                <ActionIcon variant="subtle" onClick={() => search(form.values)}>
+                                    <IconRefresh style={{ width: '70%', height: '70%' }} stroke={1.5} />
+                                </ActionIcon>
+                            )}
+                            {loading && (
+                                <Loader size='sm' />
+                            )}
                         </Box>
                     </Group>
 
