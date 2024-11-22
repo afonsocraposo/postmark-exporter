@@ -190,6 +190,7 @@ export default function Form() {
                     <TextInput
                         required
                         label="Server token"
+                        type="password"
                         placeholder="938107e4-3ccf-4a1c-b8b7-5c184eaa6a3e"
                         key={form.key('serverToken')}
                         {...form.getInputProps('serverToken')}
