@@ -29,7 +29,7 @@ export default function Form() {
         },
         onValuesChange: (values) => {
             setTotalCount(null);
-        setAlertText(null);
+            setAlertText(null);
         },
         validate: {
             serverToken: (value: string) => (/^[0-9a-fA-F]{8}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{12}$/.test(value) ? null : 'Invalid server token'),
@@ -93,13 +93,16 @@ export default function Form() {
                 currentCount = newCurrentCount;
                 csvContent += csvContentBatch;
 
+                console.info({hasMore})
                 if (!hasMore) {
                     break;
                 }
 
                 const lastEntry = csvContentBatch.split('\n').slice(-2)[0];
+                console.info({lastEntry})
                 // match date of format "2024-11-22T18:28:29Z"
                 const lastDateMatch = lastEntry?.match(/\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/)?.[0];
+                console.info({lastDateMatch})
                 if (!lastDateMatch) {
                     break;
                 }
@@ -167,7 +170,7 @@ export default function Form() {
             }
             return { csvContent, hasMore: (currentCount - prevCounter) < totalCount, currentCount };
         } else {
-            throw new Error('Failed to download messages.');
+            throw new Error(`Failed to fetch: ${response.statusText}`);
         }
     };
     const downloadCsvContent = async (csvContent: string, filename: string) => {
@@ -272,7 +275,7 @@ export default function Form() {
                         </Box>
                     </Group>
                     {alertText &&
-                        <Alert variant="light" color="red" title="Alert title" icon={<IconAlertTriangle />}>
+                        <Alert variant="light" color="red" title="Something went wrong..." icon={<IconAlertTriangle />}>
                             {alertText}
                         </Alert>
                     }
