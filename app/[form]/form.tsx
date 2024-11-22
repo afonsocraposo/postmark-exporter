@@ -93,16 +93,13 @@ export default function Form() {
                 currentCount = newCurrentCount;
                 csvContent += csvContentBatch;
 
-                console.info({hasMore})
                 if (!hasMore) {
                     break;
                 }
 
                 const lastEntry = csvContentBatch.split('\n').slice(-2)[0];
-                console.info({lastEntry})
                 // match date of format "2024-11-22T18:28:29Z"
                 const lastDateMatch = lastEntry?.match(/\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/)?.[0];
-                console.info({lastDateMatch})
                 if (!lastDateMatch) {
                     break;
                 }
@@ -189,7 +186,7 @@ export default function Form() {
     return (
         <>
             <form onSubmit={form.onSubmit(onSubmit)}>
-                <Stack gap='md'>
+                <Stack gap='md'w={380} >
                     <TextInput
                         required
                         label="Server token"
@@ -249,7 +246,7 @@ export default function Form() {
                         </Group>
                     </RadioGroup>
 
-                    <Group justify="flex-end" mt="md" align="start" w={380}>
+                    <Group justify="flex-end" mt="md" align="start">
                         <Container w={200}>
                             <Stack>
                                 <Text size='sm'>

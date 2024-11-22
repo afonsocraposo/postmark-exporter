@@ -18,7 +18,7 @@ function localize(value: number, str: string): string {
 }
 
 export function humanReadableTimeDiff(date1: Date, date2: Date): string {
-    if (areDaysEqual(date1 , date2)) return 'Today';
+    if (areDaysEqual(date1, date2)) return 'Today';
     return "Last " + localize(...timeDiff(date1, date2));
 }
 export const areDaysEqual = (date1: Date, date2: Date) => {

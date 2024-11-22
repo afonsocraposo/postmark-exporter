@@ -60,7 +60,6 @@ export async function GET(request: Request): Promise<NextResponse> {
                 this.push(null);
             } catch (error) {
                 // Handle any error and terminate the stream
-                console.error('Error while streaming data:', error);
                 this.destroy(error as Error);
             } finally {
                 isLocked = false; // Release the lock

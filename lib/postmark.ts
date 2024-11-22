@@ -40,27 +40,24 @@ export async function searchMessages(token: string, stream: string, tag: string,
 
     const fromDate = convertUTCtoEastern(start.toISOString());
     let toDate = convertUTCtoEastern(end.toISOString());
-    try {
-        const { TotalCount: totalCount, Messages: messages } = await client.getOutboundMessages({ count: BATCH_SIZE, offset, tag, messageStream: stream, fromDate, toDate, status: OutboundMessageStatus.Sent });
-        total = parseInt(totalCount);
 
-        if (messages.length === 0) {
-            return { messages: allMessages, hasMore: false, total };
-        }
-        allMessages.push(...messages);
-        offset += messages.length;
+    const { TotalCount: totalCount, Messages: messages } = await client.getOutboundMessages({ count: BATCH_SIZE, offset, tag, messageStream: stream, fromDate, toDate, status: OutboundMessageStatus.Sent });
+    total = parseInt(totalCount);
 
-        if (offset >= total) {
-            return { messages: allMessages, hasMore: false, total };
-        }
-
-        if (offset >= MAX_MESSAGES) {
-            return { messages: allMessages, hasMore: false, total };
-        }
-
-    } catch (e) {
-        console.error(e);
+    if (messages.length === 0) {
+        return { messages: allMessages, hasMore: false, total };
     }
+    allMessages.push(...messages);
+    offset += messages.length;
+
+    if (offset >= total) {
+        return { messages: allMessages, hasMore: false, total };
+    }
+
+    if (offset >= MAX_MESSAGES) {
+        return { messages: allMessages, hasMore: false, total };
+    }
+
     return { messages: allMessages, hasMore: true, total };
 }
 
@@ -71,26 +68,23 @@ export async function searchBounces(token: string, stream: string, tag: string, 
 
     const fromDate = convertUTCtoEastern(start.toISOString());
     let toDate = convertUTCtoEastern(end.toISOString());
-    try {
-        const { TotalCount: totalCount, Bounces: messages } = await client.getBounces({ count: BATCH_SIZE, offset, tag, messageStream: stream, fromDate, toDate });
-        total = totalCount;
 
-        if (messages.length === 0) {
-            return { messages: allMessages, hasMore: false, total };
-        }
-        allMessages.push(...messages);
-        offset += messages.length;
+    const { TotalCount: totalCount, Bounces: messages } = await client.getBounces({ count: BATCH_SIZE, offset, tag, messageStream: stream, fromDate, toDate });
+    total = totalCount;
 
-        if (offset >= total) {
-            return { messages: allMessages, hasMore: false, total };
-        }
-
-        if (offset >= MAX_MESSAGES) {
-            return { messages: allMessages, hasMore: false, total };
-        }
-
-    } catch (e) {
-        console.error(e);
+    if (messages.length === 0) {
+        return { messages: allMessages, hasMore: false, total };
     }
+    allMessages.push(...messages);
+    offset += messages.length;
+
+    if (offset >= total) {
+        return { messages: allMessages, hasMore: false, total };
+    }
+
+    if (offset >= MAX_MESSAGES) {
+        return { messages: allMessages, hasMore: false, total };
+    }
+
     return { messages: allMessages, hasMore: true, total };
 }
