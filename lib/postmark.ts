@@ -1,84 +1,89 @@
+"use server";
+
 import { ServerClient } from 'postmark';
-import { Bounce, OutboundMessage } from 'postmark/dist/client/models';
+import { Bounce, OutboundMessage, OutboundMessageStatus } from 'postmark/dist/client/models';
+import { convertUTCtoEastern } from './time';
 
 function getPostmarkClient(token: string): ServerClient {
-    console.log(token);
     return new ServerClient(token);
 }
 
 const BATCH_SIZE = 500;
+const MAX_MESSAGES = 10000;
 
-export async function searchMessages(token: string, stream: string, tag: string): Promise<OutboundMessage[]> {
+export async function getMessagesTotalCount(token: string, stream: string, tag: string, start: Date, end: Date): Promise<number> {
+    const client = getPostmarkClient(token);
+
+    const fromDate = convertUTCtoEastern(start.toISOString());
+    const toDate = convertUTCtoEastern(end.toISOString());
+
+    const { TotalCount: total } = await client.getOutboundMessages({ count: 1, offset: 0, tag, messageStream: stream, fromDate, toDate, status: OutboundMessageStatus.Sent });
+
+    return parseInt(total);
+}
+
+export async function getBouncesTotalCount(token: string, stream: string, tag: string, start: Date, end: Date): Promise<number> {
+    const client = getPostmarkClient(token);
+
+    const fromDate = convertUTCtoEastern(start.toISOString());
+    const toDate = convertUTCtoEastern(end.toISOString());
+
+    const { TotalCount: total } = await client.getBounces({ count: 1, offset: 0, tag, messageStream: stream, fromDate, toDate });
+
+    return total;
+}
+
+
+export async function searchMessages(token: string, stream: string, tag: string, start: Date, end: Date): Promise<OutboundMessage[]> {
     const client = getPostmarkClient(token);
     let offset = 0;
     const allMessages: OutboundMessage[] = [];
+
+    const fromDate = convertUTCtoEastern(start.toISOString());
+    const toDate = convertUTCtoEastern(end.toISOString());
     try {
         while (true) {
-            const { TotalCount: total, Messages: messages } = await client.getOutboundMessages({ count: BATCH_SIZE, offset, tag, messageStream: stream });
+            const { TotalCount: total, Messages: messages } = await client.getOutboundMessages({ count: BATCH_SIZE, offset, tag, messageStream: stream, fromDate, toDate, status: OutboundMessageStatus.Sent });
             if (messages.length === 0) {
                 break;
             }
             allMessages.push(...messages);
             offset += messages.length;
-            if (offset >= parseInt(total)) {
+            if (offset >= parseInt(total) || offset > MAX_MESSAGES) {
                 break;
             }
         }
         return allMessages;
     } catch (e) {
         console.error(e);
-        return [];
+        return allMessages;
     }
 }
 
-export async function searchBounces(token: string, stream: string, tag: string): Promise<Bounce[]> {
+export async function searchBounces(token: string, stream: string, tag: string, start: Date, end: Date): Promise<Bounce[]> {
     const client = getPostmarkClient(token);
     let offset = 0;
     const allMessages: Bounce[] = [];
+
+    const fromDate = convertUTCtoEastern(start.toISOString());
+    const toDate = convertUTCtoEastern(end.toISOString());
     try {
         while (true) {
-            const { TotalCount: total, Bounces: messages } = await client.getBounces({ count: BATCH_SIZE, offset, tag, messageStream: stream });
+            const { TotalCount: total, Bounces: messages } = await client.getBounces({ count: BATCH_SIZE, offset, tag, messageStream: stream, fromDate, toDate });
             if (messages.length === 0) {
                 break;
             }
             allMessages.push(...messages);
             offset += messages.length;
-            if (offset >= total) {
+            if (offset >= total || offset > MAX_MESSAGES) {
                 break;
             }
         }
         return allMessages;
     } catch (e) {
         console.error(e);
-        return [];
+        return allMessages;
     }
 }
 
-export function convertToCSV(messages: any[]): string {
-    if (messages.length === 0) return '';
-
-    // Define CSV headers based on keys in the first message
-    const headers = Object.keys(messages[0]).join(',');
-
-    // Format each message into a CSV row
-    const rows = messages.map(message => {
-        return Object.values(message).map(value => {
-            if (Array.isArray(value)) {
-                // Join arrays with commas
-                return `"${value.map(item => JSON.stringify(item)).join(', ')}"`;
-            } else if (typeof value === 'object' && value !== null) {
-                // Serialize objects to JSON
-                return `"${JSON.stringify(value).replace(/"/g, '""')}"`;
-            } else if (typeof value === 'string') {
-                // Escape double quotes for strings
-                return `"${value.replace(/"/g, '""')}"`;
-            } else {
-                // Default handling for other types (e.g., null, numbers, booleans)
-                return `"${String(value)}"`;
-            }
-        }).join(',');
-    });
-
-    return [headers, ...rows].join('\n');
-}
 

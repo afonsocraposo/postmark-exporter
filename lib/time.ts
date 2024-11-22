@@ -21,3 +21,17 @@ function localize(value:number, str:string):string
 export function humanReadableTimeDiff(date1:Date, date2: Date): string{
     return localize(...timeDiff(date1, date2));
 }
+
+import dayjs from 'dayjs';
+import utc from 'dayjs/plugin/utc';
+import timezone from 'dayjs/plugin/timezone';
+
+// Load plugins
+dayjs.extend(utc);
+dayjs.extend(timezone);
+
+export function convertUTCtoEastern(utcTime: string): string {
+    const time = dayjs.utc(utcTime);
+    // return as YYYY-MM-DDT23:00:00
+    return time.tz('America/New_York').format();
+}
