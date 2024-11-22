@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
-import { getMessagesTotalCount, searchMessages } from '../../../lib/postmark';
-import { convertToCSV } from '../../../lib/csv';
+import { getMessagesTotalCount, searchMessages } from '@/lib/postmark';
+import { convertToCSV } from '@/lib/csv';
 import { Readable } from 'stream';
 
 export const maxDuration = 30;
