@@ -9,7 +9,7 @@ function getPostmarkClient(token: string): ServerClient {
 }
 
 const BATCH_SIZE = 500;
-const MAX_MESSAGES = 10000;
+const MAX_MESSAGES = 3000;
 
 export async function getMessagesTotalCount(token: string, stream: string, tag: string, start: Date, end: Date): Promise<number> {
     const client = getPostmarkClient(token);
@@ -34,12 +34,11 @@ export async function getBouncesTotalCount(token: string, stream: string, tag: s
 }
 
 
-export async function searchMessages(token: string, stream: string, tag: string, start: Date, end: Date): Promise<OutboundMessage[]> {
+export async function searchMessages(token: string, stream: string, tag: string, start: Date, end: Date, offset: number=0): Promise<any> {
     const client = getPostmarkClient(token);
-    let offset = 0;
     const allMessages: OutboundMessage[] = [];
 
-    const fromDate = convertUTCtoEastern(start.toISOString());
+    let fromDate = convertUTCtoEastern(start.toISOString());
     const toDate = convertUTCtoEastern(end.toISOString());
     try {
         while (true) {
@@ -49,24 +48,26 @@ export async function searchMessages(token: string, stream: string, tag: string,
             }
             allMessages.push(...messages);
             offset += messages.length;
-            if (offset >= parseInt(total) || offset > MAX_MESSAGES) {
-                break;
+            if (offset >= parseInt(total)) {
+                return { messages: allMessages, hasMore: false, newEnd: undefined };
+            }
+
+            if (offset >= MAX_MESSAGES) {
+                return { messages: allMessages, hasMore: true, newEnd: new Date(messages[messages.length - 1].ReceivedAt) };
             }
         }
-        return allMessages;
     } catch (e) {
         console.error(e);
-        return allMessages;
     }
+    return { messages: allMessages, hasMore: false, newEnd: undefined };
 }
 
-export async function searchBounces(token: string, stream: string, tag: string, start: Date, end: Date): Promise<Bounce[]> {
+export async function searchBounces(token: string, stream: string, tag: string, start: Date, end: Date, offset: number=0): Promise<any> {
     const client = getPostmarkClient(token);
-    let offset = 0;
     const allMessages: Bounce[] = [];
 
     const fromDate = convertUTCtoEastern(start.toISOString());
-    const toDate = convertUTCtoEastern(end.toISOString());
+    let toDate = convertUTCtoEastern(end.toISOString());
     try {
         while (true) {
             const { TotalCount: total, Bounces: messages } = await client.getBounces({ count: BATCH_SIZE, offset, tag, messageStream: stream, fromDate, toDate });
@@ -75,15 +76,19 @@ export async function searchBounces(token: string, stream: string, tag: string, 
             }
             allMessages.push(...messages);
             offset += messages.length;
-            if (offset >= total || offset > MAX_MESSAGES) {
-                break;
+
+            console.log(fromDate, toDate, offset, allMessages.length, total)
+
+            if (offset >= total) {
+                return { messages: allMessages, hasMore: false, newEnd: undefined };
+            }
+
+            if (offset >= MAX_MESSAGES) {
+                return { messages: allMessages, hasMore: true, newEnd: new Date(messages[messages.length - 1].BouncedAt) };
             }
         }
-        return allMessages;
     } catch (e) {
         console.error(e);
-        return allMessages;
     }
+    return { messages: allMessages, hasMore: false, newEnd: undefined };
 }
-
-

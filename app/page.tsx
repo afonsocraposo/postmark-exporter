@@ -3,7 +3,7 @@ import Form from "./[form]/form";
 
 export default function HomePage() {
     return <Center>
-        <Stack>
+        <Stack pt='xl'>
             <Title>
                 Postmark Exporter
             </Title>

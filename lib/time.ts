@@ -33,5 +33,5 @@ dayjs.extend(timezone);
 export function convertUTCtoEastern(utcTime: string): string {
     const time = dayjs.utc(utcTime);
     // return as YYYY-MM-DDT23:00:00
-    return time.tz('America/New_York').format();
+    return time.tz('America/New_York').format().slice(0, 19);
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { ActionIcon, Box, Button, Center, Container, Group, Loader, Radio, RadioGroup, Stack, Text, TextInput } from "@mantine/core";
+import { ActionIcon, Box, Button, Center, Container, Group, Loader, Progress, Radio, RadioGroup, Stack, Text, TextInput } from "@mantine/core";
 import { DatePickerInput, DatesRangeValue } from '@mantine/dates';
 
 import { useForm } from "@mantine/form";
@@ -16,6 +16,7 @@ export default function Form() {
     const [dateRange, setDateRange] = useState<[Date, Date]>([yesterday, today]);
     const [loading, setLoading] = useState(false);  // Track loading state
     const [totalCount, setTotalCount] = useState<number | null>(null);
+    const [currentCount, setCurrentCount] = useState<number | null>(null);
 
 
     const isToday = (date: Date) => {
@@ -62,8 +63,9 @@ export default function Form() {
             setLoading(false);  // Set loading to false after fetch completes
         }
     }
-    const download = async (values: { serverToken: string, tag: string, stream: string, type: string }) => {
-        setLoading(true);  // Set loading to true before starting the fetch
+    const download = async (values: { serverToken: string; tag: string; stream: string; type: string }) => {
+        setLoading(true); // Set loading to true before starting the fetch
+        setCurrentCount(0);
 
         const { serverToken, tag, stream, type } = values;
 
@@ -88,24 +90,49 @@ export default function Form() {
             if (response.ok) {
                 const isoString = new Date().toISOString().slice(0, 19).replace(/:/g, '-'); // e.g., "2024-11-22T10-30-00"
                 const filename = `${type}-${isoString}.csv`;
-                const blob = await response.blob();
-                const downloadUrl = window.URL.createObjectURL(blob);
-                const link = document.createElement('a');
-                link.href = downloadUrl;
-                link.download = filename;
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
+
+                const reader = response.body?.getReader();
+                const decoder = new TextDecoder();
+                let csvContent = '';
+
+                if (reader) {
+                    // Read the stream incrementally
+                    let counter = 0;
+                    while (true) {
+                        const { done, value } = await reader.read();
+                        if (done) break;
+                        const content = decoder.decode(value, { stream: true });
+                        csvContent += content;
+                        // count number of \n on content
+                        const newLines = content.match(/\n/g)?.length ?? 0;
+                        counter += newLines;
+                        setCurrentCount(counter);
+                    }
+
+                    // Trigger the download once the full CSV is collected
+                    const blob = new Blob([csvContent], { type: 'text/csv' });
+                    const downloadUrl = window.URL.createObjectURL(blob);
+                    const link = document.createElement('a');
+                    link.href = downloadUrl;
+                    link.download = filename;
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                    setCurrentCount(null)
+                } else {
+                    alert('Stream error: Unable to process the response body.');
+                }
             } else {
                 alert('Failed to download messages.');
             }
         } catch (error) {
-            console.error("Fetch error:", error);
-            alert("An error occurred while fetching.");
+            console.error('Fetch error:', error);
+            alert('An error occurred while fetching.');
         } finally {
-            setLoading(false);  // Set loading to false after fetch completes
+            setLoading(false); // Set loading to false after fetch completes
         }
     };
+
 
     return (
         <>
@@ -141,6 +168,7 @@ export default function Form() {
                             value={dateRange}
                             maxDate={today}
                             required
+                            allowSingleDateInRange
                             onChange={(dateRange: DatesRangeValue) => {
                                 setTotalCount(null);
                                 const start = dateRange[0] as Date;
@@ -175,10 +203,8 @@ export default function Form() {
                                 <Text size='sm'>
                                     {totalCount ? `Total: ${totalCount} ${form.values.type}` : ''}
                                 </Text>
-                                {totalCount && totalCount > 10000 && (
-                                    <Text size='xs' c='red'>
-                                        Due to Postmark API limitations, only the first 10,000 records will be exported.
-                                    </Text>
+                                {loading && totalCount && currentCount!== null && (
+                                    <Progress size="xl" value={Math.min(100, 100 * currentCount / totalCount)} animated striped/>
                                 )}
                             </Stack>
                         </Container>
