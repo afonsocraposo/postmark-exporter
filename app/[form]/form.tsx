@@ -130,7 +130,7 @@ export default function Form() {
         queryParams.set('tag', tag);
         queryParams.set('stream', stream);
         queryParams.set('header', header ? 'true' : 'false');
-        const url = `/api/download-${type}?${queryParams.toString()}`;
+        const url = `/api/postmark/download-${type}?${queryParams.toString()}`;
 
         // Use fetch to trigger the API route
         const response = await fetch(url, {
