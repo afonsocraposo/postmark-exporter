@@ -26,6 +26,7 @@ export default function Form() {
             tag: '',
             stream: '',
             type: 'messages',
+            subject: '',
         },
         onValuesChange: (values) => {
             setTotalCount(null);
@@ -35,14 +36,14 @@ export default function Form() {
             serverToken: (value: string) => (/^[0-9a-fA-F]{8}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{12}$/.test(value) ? null : 'Invalid server token'),
         },
     });
-    const onSubmit = (values: { serverToken: string, tag: string, stream: string, type: string }) => {
+    const onSubmit = (values: { serverToken: string, tag: string, stream: string, subject: string, type: string }) => {
         if (!dateRange[0] || !dateRange[1]) {
             return
         }
         setAlertText(null);
         return totalCount ? downloadAll(values) : search(values);
     }
-    const search = async (values: { serverToken: string, tag: string, stream: string, type: string }) => {
+    const search = async (values: { serverToken: string, tag: string, stream: string, type: string, subject: string }) => {
         setLoading(true);  // Set loading to true before starting the fetch
 
         const start = dateRange[0];
@@ -50,12 +51,12 @@ export default function Form() {
         start.setHours(0, 0, 0, 0);
         end.setHours(23, 59, 59, 999);
 
-        const { serverToken, tag, stream, type } = values;
+        const { serverToken, tag, stream, type, subject } = values;
 
         try {
             let totalCount: number;
             if (type === 'messages') {
-                totalCount = await getMessagesTotalCount(serverToken, stream, tag, start, end);
+                totalCount = await getMessagesTotalCount(serverToken, stream, tag, subject, start, end);
             } else {
                 totalCount = await getBouncesTotalCount(serverToken, stream, tag, start, end);
             }
@@ -119,15 +120,16 @@ export default function Form() {
             setLoading(false); // Set loading to false after fetch completes
         }
     }
-    const download = async (values: { serverToken: string; tag: string; stream: string; type: string }, start: string, end: string, header: boolean, currentCount: number) => {
+    const download = async (values: { serverToken: string; tag: string; subject: string; stream: string; type: string }, start: string, end: string, header: boolean, currentCount: number) => {
 
         const prevCounter = currentCount;
-        const { serverToken, tag, stream, type } = values;
+        const { serverToken, tag, stream, type, subject } = values;
 
         const queryParams = new URLSearchParams();
         queryParams.set('start', start);
         queryParams.set('end', end);
         queryParams.set('tag', tag);
+        queryParams.set('subject', subject);
         queryParams.set('stream', stream);
         queryParams.set('header', header ? 'true' : 'false');
         const url = `/api/postmark/download-${type}?${queryParams.toString()}`;
@@ -186,7 +188,7 @@ export default function Form() {
     return (
         <>
             <form onSubmit={form.onSubmit(onSubmit)}>
-                <Stack gap='md'w={380} >
+                <Stack gap='md' w={380} >
                     <TextInput
                         required
                         label="Server token"
@@ -209,6 +211,15 @@ export default function Form() {
                         key={form.key('tag')}
                         {...form.getInputProps('tag')}
                     />
+
+                    {form.values.type === 'messages' &&
+                        <TextInput
+                            label="Subject"
+                            placeholder="subject"
+                            key={form.key('subject')}
+                            {...form.getInputProps('subject')}
+                        />
+                    }
 
                     <Stack>
                         <DatePickerInput

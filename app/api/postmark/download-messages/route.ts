@@ -10,6 +10,7 @@ export async function GET(request: Request): Promise<NextResponse> {
     const url = new URL(request.url);
     const stream = url.searchParams.get('stream') || '';
     const tag = url.searchParams.get('tag') || '';
+    const subject = url.searchParams.get('subject') || '';
     const header = url.searchParams.get('header') || '';
 
     const startParam = url.searchParams.get('start') || '';
@@ -29,7 +30,7 @@ export async function GET(request: Request): Promise<NextResponse> {
 
     // Create a Readable stream
     let offset = 0;
-    const total = await getMessagesTotalCount(token, stream, tag, start, end);
+    const total = await getMessagesTotalCount(token, stream, tag, subject, start, end);
     const readableStream = new Readable({
         async read() {
             if (isLocked) {
@@ -43,7 +44,7 @@ export async function GET(request: Request): Promise<NextResponse> {
 
                 while (true) {
                     // Fetch a single page of messages
-                    const { messages, hasMore } = await searchMessages(token, stream, tag, start, end, offset);
+                    const { messages, hasMore } = await searchMessages(token, stream, tag, subject, start, end, offset);
 
                     // Convert messages to CSV and push to the stream
                     const csvData = convertToCSV(messages, generateHeader);

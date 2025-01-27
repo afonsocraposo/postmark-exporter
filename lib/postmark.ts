@@ -11,13 +11,13 @@ function getPostmarkClient(token: string): ServerClient {
 const BATCH_SIZE = 500;
 const MAX_MESSAGES = 10000;
 
-export async function getMessagesTotalCount(token: string, stream: string, tag: string, start: Date, end: Date): Promise<number> {
+export async function getMessagesTotalCount(token: string, stream: string, tag: string, subject: string, start: Date, end: Date): Promise<number> {
     const client = getPostmarkClient(token);
 
     const fromDate = convertUTCtoEastern(start.toISOString());
     const toDate = convertUTCtoEastern(end.toISOString());
 
-    const { TotalCount: total } = await client.getOutboundMessages({ count: 1, offset: 0, tag, messageStream: stream, fromDate, toDate, status: OutboundMessageStatus.Sent });
+    const { TotalCount: total } = await client.getOutboundMessages({ count: 1, offset: 0, tag, subject, messageStream: stream, fromDate, toDate, status: OutboundMessageStatus.Sent });
 
     return parseInt(total);
 }
@@ -33,7 +33,7 @@ export async function getBouncesTotalCount(token: string, stream: string, tag: s
     return total;
 }
 
-export async function searchMessages(token: string, stream: string, tag: string, start: Date, end: Date, offset: number = 0): Promise<any> {
+export async function searchMessages(token: string, stream: string, tag: string, subject:string, start: Date, end: Date, offset: number = 0): Promise<any> {
     const client = getPostmarkClient(token);
     const allMessages: OutboundMessage[] = [];
     let total = 0;
@@ -41,7 +41,7 @@ export async function searchMessages(token: string, stream: string, tag: string,
     const fromDate = convertUTCtoEastern(start.toISOString());
     let toDate = convertUTCtoEastern(end.toISOString());
 
-    const { TotalCount: totalCount, Messages: messages } = await client.getOutboundMessages({ count: BATCH_SIZE, offset, tag, messageStream: stream, fromDate, toDate, status: OutboundMessageStatus.Sent });
+    const { TotalCount: totalCount, Messages: messages } = await client.getOutboundMessages({ count: BATCH_SIZE, offset, tag, subject, messageStream: stream, fromDate, toDate, status: OutboundMessageStatus.Sent });
     total = parseInt(totalCount);
 
     if (messages.length === 0) {
