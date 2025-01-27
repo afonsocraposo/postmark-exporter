@@ -67,7 +67,7 @@ export default function Form() {
             setLoading(false);  // Set loading to false after fetch completes
         }
     }
-    const downloadAll = async (values: { serverToken: string, tag: string, stream: string, type: string }) => {
+    const downloadAll = async (values: { serverToken: string, tag: string, subject: string, stream: string, type: string }) => {
         const { type } = values;
 
         setLoading(true); // Set loading to true before starting the fetch
